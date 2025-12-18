@@ -1,4 +1,4 @@
 export { HomeScreen } from './HomeScreen';
 export { WebViewScreen } from './WebViewScreen';
-export { FavoritesScreen } from './FavoritesScreen';
+export { MyScreen } from './MyScreen';
 export { SettingsScreen } from './SettingsScreen';

@@ -11,8 +11,10 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -29,6 +31,7 @@ export const WebViewScreen: React.FC<WebViewScreenProps> = ({
 }) => {
   const { webtoon } = route.params;
   const webViewRef = useRef<WebView>(null);
+  const insets = useSafeAreaInsets();
 
   // State
   const [isLoading, setIsLoading] = useState(true);
@@ -91,17 +94,15 @@ export const WebViewScreen: React.FC<WebViewScreenProps> = ({
   }, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
       {/* Custom Header */}
-      <View style={styles.header}>
-        {/* Back/Close button */}
+      <View style={[styles.header, { paddingTop: insets.top + SPACING.sm }]}>
+        {/* Back to Home button - red arrow */}
         <TouchableOpacity
-          style={styles.headerButton}
-          onPress={canGoBack ? handleGoBack : handleClose}
+          style={styles.homeButton}
+          onPress={handleClose}
         >
-          <Text style={styles.headerButtonText}>
-            {canGoBack ? '←' : '✕'}
-          </Text>
+          <Text style={styles.homeButtonText}>←</Text>
         </TouchableOpacity>
 
         {/* Title and episode info */}
@@ -116,10 +117,8 @@ export const WebViewScreen: React.FC<WebViewScreenProps> = ({
           )}
         </View>
 
-        {/* Refresh button */}
-        <TouchableOpacity style={styles.headerButton} onPress={handleRefresh}>
-          <Text style={styles.headerButtonText}>↻</Text>
-        </TouchableOpacity>
+        {/* Empty space for balance */}
+        <View style={styles.headerButton} />
       </View>
 
       {/* Progress indicator bar */}
@@ -168,13 +167,32 @@ export const WebViewScreen: React.FC<WebViewScreenProps> = ({
         )}
       </View>
 
-      {/* Bottom info bar */}
+      {/* Bottom navigation bar */}
       <View style={styles.bottomBar}>
-        <Text style={styles.urlText} numberOfLines={1}>
-          {currentUrl}
-        </Text>
+        {/* Back button */}
+        <TouchableOpacity
+          style={[styles.bottomButton, !canGoBack && styles.bottomButtonDisabled]}
+          onPress={handleGoBack}
+          disabled={!canGoBack}
+        >
+          <Text style={[styles.bottomButtonText, !canGoBack && styles.bottomButtonTextDisabled]}>
+            ←
+          </Text>
+        </TouchableOpacity>
+
+        {/* URL display */}
+        <View style={styles.urlContainer}>
+          <Text style={styles.urlText} numberOfLines={1}>
+            {currentUrl}
+          </Text>
+        </View>
+
+        {/* Refresh button */}
+        <TouchableOpacity style={styles.bottomButton} onPress={handleRefresh}>
+          <Text style={styles.bottomButtonText}>↻</Text>
+        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -188,6 +206,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.sm,
+    paddingTop: Platform.OS === 'ios' ? (StatusBar.currentHeight ?? 10) + SPACING.sm : SPACING.sm,
     backgroundColor: COLORS.background,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -202,6 +221,18 @@ const styles = StyleSheet.create({
   headerButtonText: {
     fontSize: 24,
     color: COLORS.text,
+  },
+  homeButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: RADIUS.sm,
+  },
+  homeButtonText: {
+    fontSize: 28,
+    color: '#FF3B30',
+    fontWeight: '700',
   },
   headerTitleContainer: {
     flex: 1,
@@ -249,11 +280,34 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.surface,
     paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.sm,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
+  },
+  bottomButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: RADIUS.sm,
+  },
+  bottomButtonDisabled: {
+    opacity: 0.3,
+  },
+  bottomButtonText: {
+    fontSize: 24,
+    color: COLORS.text,
+  },
+  bottomButtonTextDisabled: {
+    color: COLORS.textSecondary,
+  },
+  urlContainer: {
+    flex: 1,
+    paddingHorizontal: SPACING.sm,
   },
   urlText: {
     fontSize: 11,

@@ -18,7 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Webtoon, Platform, RootStackParamList } from '../types';
 import { DUMMY_WEBTOONS, COLORS, SPACING } from '../constants';
 import { WebtoonCard, SearchBar, PlatformFilter } from '../components';
-import { useProgress, useFavorites } from '../hooks';
+import { useProgress } from '../hooks';
+import { useFavoritesContext } from '../contexts';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -35,7 +36,7 @@ export const HomeScreen: React.FC = () => {
 
   // Hooks
   const { progress, refreshProgress, getWebtoonProgress } = useProgress();
-  const { isFavorite, toggleFavorite } = useFavorites();
+  const { isFavorite, toggleFavorite } = useFavoritesContext();
 
   // Filter webtoons based on search and platform
   const filteredWebtoons = useMemo(() => {

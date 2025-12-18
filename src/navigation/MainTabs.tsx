@@ -8,7 +8,7 @@ import { Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { MainTabParamList } from '../types';
-import { HomeScreen, FavoritesScreen, SettingsScreen } from '../screens';
+import { HomeScreen, MyScreen, SettingsScreen } from '../screens';
 import { COLORS } from '../constants';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -46,12 +46,12 @@ export const MainTabs: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Favorites"
-        component={FavoritesScreen}
+        name="My"
+        component={MyScreen}
         options={{
-          tabBarLabel: '즐겨찾기',
+          tabBarLabel: 'My',
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="🤍" activeIcon="❤️" />
+            <TabIcon focused={focused} icon="👤" activeIcon="👤" />
           ),
         }}
       />
