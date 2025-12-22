@@ -3,7 +3,7 @@
  * Displays user's recent webtoons and favorites with tab filter
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -12,6 +12,9 @@ import {
   RefreshControl,
   TouchableOpacity,
   ScrollView,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -36,8 +39,13 @@ const TABS: { key: TabType; label: string }[] = [
   { key: 'favorites', label: '즐겨찾기' },
 ];
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
 export const MyScreen: React.FC = () => {
   const navigation = useNavigation<MyScreenNavigationProp>();
+
+  // Refs
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // State
   const [selectedTab, setSelectedTab] = useState<TabType>('recent');
@@ -82,9 +90,6 @@ export const MyScreen: React.FC = () => {
     return DUMMY_WEBTOONS.filter((w) => favoriteIds.has(w.id));
   }, [favorites]);
 
-  // Get current list based on selected tab
-  const currentWebtoons = selectedTab === 'recent' ? recentWebtoons : favoriteWebtoons;
-
   // Handle webtoon press
   // If there's reading progress, navigate to the last read episode
   const handleWebtoonPress = useCallback(
@@ -120,6 +125,29 @@ export const MyScreen: React.FC = () => {
     setRefreshing(false);
   }, [refreshProgress, refreshFavorites]);
 
+  // Handle tab change (also scrolls to the corresponding page)
+  const handleTabChange = useCallback((tab: TabType) => {
+    setSelectedTab(tab);
+    const pageIndex = TABS.findIndex(t => t.key === tab);
+    scrollViewRef.current?.scrollTo({
+      x: pageIndex * SCREEN_WIDTH,
+      animated: true,
+    });
+  }, []);
+
+  // Handle swipe (updates selected tab based on scroll position)
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const pageIndex = Math.round(offsetX / SCREEN_WIDTH);
+
+    if (pageIndex >= 0 && pageIndex < TABS.length) {
+      const newTab = TABS[pageIndex].key;
+      if (newTab !== selectedTab) {
+        setSelectedTab(newTab);
+      }
+    }
+  }, [selectedTab]);
+
   // Render webtoon item
   const renderWebtoonItem = useCallback(
     ({ item }: { item: Webtoon }) => (
@@ -134,22 +162,20 @@ export const MyScreen: React.FC = () => {
     [getWebtoonProgress, isFavorite, handleWebtoonPress, handleFavoritePress]
   );
 
-  // Render empty state
-  const renderEmptyState = () => (
+  // Render empty state for each tab
+  const renderRecentEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>
-        {selectedTab === 'recent' ? '🕐' : '❤️'}
-      </Text>
-      <Text style={styles.emptyText}>
-        {selectedTab === 'recent'
-          ? '최근 본 웹툰이 없습니다'
-          : '즐겨찾기가 비어있습니다'}
-      </Text>
-      <Text style={styles.emptySubtext}>
-        {selectedTab === 'recent'
-          ? '웹툰을 읽으면 여기에 표시됩니다'
-          : '웹툰의 하트를 눌러 추가하세요'}
-      </Text>
+      <Text style={styles.emptyIcon}>🕐</Text>
+      <Text style={styles.emptyText}>최근 본 웹툰이 없습니다</Text>
+      <Text style={styles.emptySubtext}>웹툰을 읽으면 여기에 표시됩니다</Text>
+    </View>
+  );
+
+  const renderFavoritesEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyIcon}>❤️</Text>
+      <Text style={styles.emptyText}>즐겨찾기가 비어있습니다</Text>
+      <Text style={styles.emptySubtext}>웹툰의 하트를 눌러 추가하세요</Text>
     </View>
   );
 
@@ -178,7 +204,7 @@ export const MyScreen: React.FC = () => {
                   styles.filterChip,
                   isSelected && styles.filterChipSelected,
                 ]}
-                onPress={() => setSelectedTab(tab.key)}
+                onPress={() => handleTabChange(tab.key)}
               >
                 <Text
                   style={[
@@ -205,22 +231,54 @@ export const MyScreen: React.FC = () => {
         </ScrollView>
       </View>
 
-      {/* Webtoon List */}
-      <FlatList
-        data={currentWebtoons}
-        keyExtractor={(item) => item.id}
-        renderItem={renderWebtoonItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={COLORS.primary}
+      {/* Swipeable Webtoon Lists */}
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        style={styles.pagerContainer}
+      >
+        {/* Recent Webtoons Page */}
+        <View style={styles.page}>
+          <FlatList
+            data={recentWebtoons}
+            keyExtractor={(item) => item.id}
+            renderItem={renderWebtoonItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={renderRecentEmptyState}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={COLORS.primary}
+              />
+            }
           />
-        }
-      />
+        </View>
+
+        {/* Favorites Page */}
+        <View style={styles.page}>
+          <FlatList
+            data={favoriteWebtoons}
+            keyExtractor={(item) => item.id}
+            renderItem={renderWebtoonItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={renderFavoritesEmptyState}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={COLORS.primary}
+              />
+            }
+          />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -289,6 +347,12 @@ const styles = StyleSheet.create({
   },
   countTextSelected: {
     color: COLORS.background,
+  },
+  pagerContainer: {
+    flex: 1,
+  },
+  page: {
+    width: SCREEN_WIDTH,
   },
   listContent: {
     paddingVertical: SPACING.sm,

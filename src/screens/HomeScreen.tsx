@@ -3,13 +3,17 @@
  * Main screen displaying list of webtoons with search and filter functionality
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   FlatList,
   StyleSheet,
   Text,
   RefreshControl,
+  ScrollView,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,8 +31,14 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
   'MainTabs'
 >;
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const PLATFORMS: (Platform | null)[] = [null, 'naver', 'kakao', 'lezhin'];
+
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+
+  // Refs
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,10 +57,10 @@ export const HomeScreen: React.FC = () => {
   );
 
   // Filter webtoons based on search and platform
-  const filteredWebtoons = useMemo(() => {
+  const getFilteredWebtoons = useCallback((platform: Platform | null) => {
     return DUMMY_WEBTOONS.filter((webtoon) => {
       // Platform filter
-      if (selectedPlatform && webtoon.platform !== selectedPlatform) {
+      if (platform && webtoon.platform !== platform) {
         return false;
       }
       // Search filter
@@ -60,7 +70,13 @@ export const HomeScreen: React.FC = () => {
       }
       return true;
     });
-  }, [searchQuery, selectedPlatform]);
+  }, [searchQuery]);
+
+  // Get filtered webtoons for each platform
+  const allWebtoons = useMemo(() => getFilteredWebtoons(null), [getFilteredWebtoons]);
+  const naverWebtoons = useMemo(() => getFilteredWebtoons('naver'), [getFilteredWebtoons]);
+  const kakaoWebtoons = useMemo(() => getFilteredWebtoons('kakao'), [getFilteredWebtoons]);
+  const lezhinWebtoons = useMemo(() => getFilteredWebtoons('lezhin'), [getFilteredWebtoons]);
 
   // Handle webtoon press - navigate to WebView
   // If there's reading progress, navigate to the last read episode
@@ -96,6 +112,29 @@ export const HomeScreen: React.FC = () => {
     await refreshProgress();
     setRefreshing(false);
   }, [refreshProgress]);
+
+  // Handle platform change (also scrolls to the corresponding page)
+  const handlePlatformChange = useCallback((platform: Platform | null) => {
+    setSelectedPlatform(platform);
+    const pageIndex = PLATFORMS.findIndex(p => p === platform);
+    scrollViewRef.current?.scrollTo({
+      x: pageIndex * SCREEN_WIDTH,
+      animated: true,
+    });
+  }, []);
+
+  // Handle swipe (updates selected platform based on scroll position)
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const pageIndex = Math.round(offsetX / SCREEN_WIDTH);
+
+    if (pageIndex >= 0 && pageIndex < PLATFORMS.length) {
+      const newPlatform = PLATFORMS[pageIndex];
+      if (newPlatform !== selectedPlatform) {
+        setSelectedPlatform(newPlatform);
+      }
+    }
+  }, [selectedPlatform]);
 
   // Render webtoon item
   const renderWebtoonItem = useCallback(
@@ -135,25 +174,95 @@ export const HomeScreen: React.FC = () => {
       {/* Platform Filter */}
       <PlatformFilter
         selectedPlatform={selectedPlatform}
-        onSelect={setSelectedPlatform}
+        onSelect={handlePlatformChange}
       />
 
-      {/* Webtoon List */}
-      <FlatList
-        data={filteredWebtoons}
-        keyExtractor={(item) => item.id}
-        renderItem={renderWebtoonItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={COLORS.primary}
+      {/* Swipeable Webtoon Lists */}
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        style={styles.pagerContainer}
+      >
+        {/* All Webtoons Page */}
+        <View style={styles.page}>
+          <FlatList
+            data={allWebtoons}
+            keyExtractor={(item) => item.id}
+            renderItem={renderWebtoonItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={renderEmptyState}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={COLORS.primary}
+              />
+            }
           />
-        }
-      />
+        </View>
+
+        {/* Naver Webtoons Page */}
+        <View style={styles.page}>
+          <FlatList
+            data={naverWebtoons}
+            keyExtractor={(item) => item.id}
+            renderItem={renderWebtoonItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={renderEmptyState}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={COLORS.primary}
+              />
+            }
+          />
+        </View>
+
+        {/* Kakao Webtoons Page */}
+        <View style={styles.page}>
+          <FlatList
+            data={kakaoWebtoons}
+            keyExtractor={(item) => item.id}
+            renderItem={renderWebtoonItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={renderEmptyState}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={COLORS.primary}
+              />
+            }
+          />
+        </View>
+
+        {/* Lezhin Webtoons Page */}
+        <View style={styles.page}>
+          <FlatList
+            data={lezhinWebtoons}
+            keyExtractor={(item) => item.id}
+            renderItem={renderWebtoonItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={renderEmptyState}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={COLORS.primary}
+              />
+            }
+          />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -174,6 +283,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: COLORS.text,
+  },
+  pagerContainer: {
+    flex: 1,
+  },
+  page: {
+    width: SCREEN_WIDTH,
   },
   listContent: {
     paddingVertical: SPACING.sm,
