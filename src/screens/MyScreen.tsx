@@ -15,13 +15,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 import { Webtoon, RootStackParamList } from '../types';
 import { DUMMY_WEBTOONS, COLORS, SPACING, RADIUS } from '../constants';
 import { WebtoonCard } from '../components';
 import { useProgress } from '../hooks';
 import { useFavoritesContext } from '../contexts';
+import { buildEpisodeUrl } from '../services/episodeParser';
 
 type MyScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -51,6 +52,14 @@ export const MyScreen: React.FC = () => {
     refreshFavorites,
   } = useFavoritesContext();
 
+  // Refresh data when screen comes into focus (e.g., returning from WebView)
+  useFocusEffect(
+    useCallback(() => {
+      refreshProgress();
+      refreshFavorites();
+    }, [refreshProgress, refreshFavorites])
+  );
+
   // Get recent webtoons (sorted by lastReadAt)
   const recentWebtoons = useMemo(() => {
     const progressEntries = Object.values(progress);
@@ -77,11 +86,23 @@ export const MyScreen: React.FC = () => {
   const currentWebtoons = selectedTab === 'recent' ? recentWebtoons : favoriteWebtoons;
 
   // Handle webtoon press
+  // If there's reading progress, navigate to the last read episode
   const handleWebtoonPress = useCallback(
     (webtoon: Webtoon) => {
-      navigation.navigate('WebView', { webtoon });
+      const webtoonProgress = getWebtoonProgress(webtoon.id);
+
+      if (webtoonProgress && webtoonProgress.lastEpisode > 0) {
+        // Build URL for the last read episode
+        const episodeUrl = buildEpisodeUrl(webtoon, webtoonProgress.lastEpisode);
+        navigation.navigate('WebView', {
+          webtoon: { ...webtoon, url: episodeUrl }
+        });
+      } else {
+        // No progress, go to webtoon's main page
+        navigation.navigate('WebView', { webtoon });
+      }
     },
-    [navigation]
+    [navigation, getWebtoonProgress]
   );
 
   // Handle favorite toggle

@@ -34,13 +34,17 @@ export const extractEpisodeFromUrl = (
 
 /**
  * Check if the URL belongs to the same webtoon domain
- * Prevents tracking unrelated pages
+ * Handles mobile subdomains (m.comic.naver.com == comic.naver.com)
  */
 export const isValidWebtoonUrl = (url: string, webtoon: Webtoon): boolean => {
   try {
     const currentUrl = new URL(url);
     const baseUrl = new URL(webtoon.url);
-    return currentUrl.hostname === baseUrl.hostname;
+
+    // Remove 'm.' prefix for comparison (mobile domains)
+    const normalizeHost = (host: string) => host.replace(/^m\./, '');
+
+    return normalizeHost(currentUrl.hostname) === normalizeHost(baseUrl.hostname);
   } catch {
     return false;
   }

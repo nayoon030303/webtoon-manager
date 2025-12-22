@@ -22,6 +22,24 @@ interface WebtoonCardProps {
   onFavoritePress?: (webtoonId: string) => void;
 }
 
+// Format relative time (e.g., "3일 전", "방금 전")
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSeconds < 60) return '방금 전';
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+  if (diffHours < 24) return `${diffHours}시간 전`;
+  if (diffDays < 7) return `${diffDays}일 전`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}주 전`;
+  return `${Math.floor(diffDays / 30)}달 전`;
+};
+
 export const WebtoonCard: React.FC<WebtoonCardProps> = ({
   webtoon,
   progress,
@@ -65,7 +83,10 @@ export const WebtoonCard: React.FC<WebtoonCardProps> = ({
         {progress && (
           <View style={styles.progressContainer}>
             <Text style={styles.progressText}>
-              마지막 읽음: {progress.lastEpisode}화
+              {progress.lastEpisode}화
+            </Text>
+            <Text style={styles.progressDate}>
+              {formatRelativeTime(progress.lastReadAt)}
             </Text>
           </View>
         )}
@@ -142,7 +163,12 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 13,
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  progressDate: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginLeft: SPACING.sm,
   },
   favoriteButton: {
     position: 'absolute',

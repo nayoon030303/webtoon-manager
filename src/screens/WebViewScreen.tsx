@@ -54,13 +54,19 @@ export const WebViewScreen: React.FC<WebViewScreenProps> = ({
       setCurrentUrl(url);
       setCanGoBack(navCanGoBack);
 
+      // Debug logging
+      console.log(`[WebView] URL changed: ${url}`);
+      console.log(`[WebView] Pattern: ${webtoon.episodePattern}`);
+
       // Only process if URL belongs to the webtoon's domain
       if (!isValidWebtoonUrl(url, webtoon)) {
+        console.log(`[WebView] URL not valid for this webtoon`);
         return;
       }
 
       // Extract episode number from URL
       const episode = extractEpisodeFromUrl(url, webtoon);
+      console.log(`[WebView] Extracted episode: ${episode}`);
 
       if (episode !== null) {
         setDetectedEpisode(episode);
@@ -68,7 +74,7 @@ export const WebViewScreen: React.FC<WebViewScreenProps> = ({
         // Update progress in storage (only if higher than current)
         updateWebtoonProgress(webtoon.id, episode);
 
-        console.log(`[WebView] Detected episode ${episode} for ${webtoon.title}`);
+        console.log(`[WebView] Saved episode ${episode} for ${webtoon.title}`);
       }
     },
     [webtoon, updateWebtoonProgress]
