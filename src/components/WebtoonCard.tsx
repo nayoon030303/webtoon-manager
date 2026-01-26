@@ -40,70 +40,37 @@ const formatRelativeTime = (dateString: string): string => {
   return `${Math.floor(diffDays / 30)}달 전`;
 };
 
-// Generate injected JavaScript to show only thumbnail from webtoon page
-const getThumbnailInjectedJS = (): string => {
+// Generate HTML to display thumbnail image
+const getThumbnailHTML = (thumbnailUrl: string): string => {
   return `
-    (function() {
-      function log(message) {
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(message);
-        }
-      }
-
-      function extractAndShowThumbnail() {
-        log('[WebtoonCard] extractAndShowThumbnail 실행');
-        log('[WebtoonCard] 현재 URL: ' + window.location.href);
-
-        // Hide everything first
-        document.body.style.margin = '0';
-        document.body.style.padding = '0';
-        document.body.style.overflow = 'hidden';
-
-        // Find thumbnail image (og:image meta tag or first large image)
-        let thumbnailUrl = '';
-
-        // Try og:image first
-        const ogImage = document.querySelector('meta[property="og:image"]');
-        log('[WebtoonCard] ogImage 태그: ' + (ogImage ? 'found' : 'null'));
-
-        if (ogImage) {
-          thumbnailUrl = ogImage.getAttribute('content');
-          log('[WebtoonCard] 추출된 thumbnailUrl: ' + thumbnailUrl);
-        } else {
-          log('[WebtoonCard] og:image 태그를 찾을 수 없음');
-        }
-
-        // If found, display only the thumbnail
-        if (thumbnailUrl) {
-          log('[WebtoonCard] 썸네일 이미지 표시: ' + thumbnailUrl);
-
-          // Create image and log dimensions
-          const img = new Image();
-          img.onload = function() {
-            log('[WebtoonCard] 원본 이미지 크기: ' + img.width + 'x' + img.height);
-          };
-          img.src = thumbnailUrl;
-
-          document.body.innerHTML = '<img src="' + thumbnailUrl + '" style="width: 100%; height: 100%; object-fit: contain; display: block; background: #F8FAFC;" />';
-        } else {
-          log('[WebtoonCard] 폴백 표시 (og:image 없음)');
-          // Fallback: show placeholder
-          document.body.innerHTML = '<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #E2E8F0; font-size: 32px;">📚</div>';
-        }
-      }
-
-      if (document.readyState === 'loading') {
-        log('[WebtoonCard] DOM 로딩 중...');
-        document.addEventListener('DOMContentLoaded', extractAndShowThumbnail);
-      } else {
-        log('[WebtoonCard] DOM 이미 로드됨, 즉시 실행');
-        extractAndShowThumbnail();
-      }
-
-      setTimeout(extractAndShowThumbnail, 500);
-    })();
-
-    true;
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #F8FAFC;
+          }
+          img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+          }
+        </style>
+      </head>
+      <body>
+        <img src="${thumbnailUrl}" alt="Webtoon Thumbnail" />
+      </body>
+    </html>
   `;
 };
 
@@ -126,22 +93,16 @@ export const WebtoonCard: React.FC<WebtoonCardProps> = ({
       {/* Thumbnail */}
       <View style={styles.thumbnailContainer}>
         <WebView
-          source={{ uri: webtoon.url }}
+          source={{ html: getThumbnailHTML(webtoon.thumbnail) }}
           style={styles.thumbnail}
-          injectedJavaScript={getThumbnailInjectedJS()}
-          javaScriptEnabled={true}
           scrollEnabled={false}
           bounces={false}
           showsVerticalScrollIndicator={false}
           showsHorizontalScrollIndicator={false}
           pointerEvents="none"
-          userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
           onError={() => {
-            console.log('WebView 로딩 실패:', webtoon.url);
+            console.log('WebView 로딩 실패:', webtoon.thumbnail);
             setImageError(true);
-          }}
-          onMessage={(event) => {
-            console.log('[WebtoonCard WebView]', event.nativeEvent.data);
           }}
         />
         {imageError && (
